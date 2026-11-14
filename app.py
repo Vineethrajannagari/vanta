@@ -19,7 +19,11 @@ load_dotenv()
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 UPLOADS = os.path.join(BASE, "uploads")
-os.makedirs(UPLOADS, exist_ok=True)
+# For Vercel, uploads directory might not persist, but we still need it
+try:
+    os.makedirs(UPLOADS, exist_ok=True)
+except Exception:
+    pass
 MIN_TOPUP = 50
 IMG_MAGIC = {b"\x89PNG": "png", b"\xff\xd8\xff": "jpg", b"RIFF": "webp"}
 
@@ -250,7 +254,14 @@ def init_db():
         try:
             cur = conn._raw.cursor()
             pg_schema = SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY").replace("BLOB", "BYTEA")
-            cur.execute(pg_schema)
+            # Split schema and execute each statement separately for better error handling
+            statements = [s.strip() for s in pg_schema.split(';') if s.strip()]
+            for stmt in statements:
+                try:
+                    cur.execute(stmt)
+                except Exception as e:
+                    if "already exists" not in str(e).lower():
+                        print(f"Schema execution warning: {e}")
             conn.commit()
 
             if email and pw:
@@ -1525,10 +1536,17 @@ app.jinja_loader = DictLoader(T)
 @app.before_request
 def ensure_db_initialized():
     if not hasattr(app, 'db_initialized'):
-        init_db()
-        app.db_initialized = True
+        try:
+            init_db()
+            app.db_initialized = True
+        except Exception as e:
+            print(f"Database initialization error: {e}")
+            # Don't fail the request if DB init fails (might be temporary)
 
 
 if __name__ == "__main__":
     init_db()
     app.run(debug=False, port=5000)
+
+# For Vercel deployment
+app = app
