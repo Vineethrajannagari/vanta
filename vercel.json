@@ -11,12 +11,5 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ],
-  "env": {
-    "SECRET_KEY": "@secret_key",
-    "KEY_ENC_SECRET": "@key_enc_secret",
-    "ADMIN_EMAIL": "@admin_email",
-    "ADMIN_PASSWORD": "@admin_password",
-    "DATABASE_URL": "@database_url"
-  }
+  ]
 }
